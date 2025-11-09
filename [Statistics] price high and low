@@ -5,7 +5,7 @@ indicator("[Statistics] price high and low", overlay = true)
 
 // --- General Settings ---
 var string GRP_GENERAL = "General Settings"
-i_hourlyTimezone = input.string("America/New_York", "Timezone (4H, Custom, Session)", options = [
+i_hourlyTimezone = input.string("America/New_York", "Timezone (Custom, Session)", options = [
      // Americas (North)
      "America/Los_Angeles", "America/Vancouver", "America/Phoenix", "America/Denver", "America/Chicago", "America/Mexico_City", "America/New_York", "America/Toronto", 
      // Americas (South)
@@ -20,23 +20,11 @@ i_hourlyTimezone = input.string("America/New_York", "Timezone (4H, Custom, Sessi
      "Australia/Perth", "Australia/Sydney", "Australia/Adelaide", "Australia/Brisbane", "Pacific/Auckland", "Pacific/Honolulu",
      // UTC
      "Etc/UTC"
-     ], group = GRP_GENERAL, tooltip = "Selects the reference timezone. Used for the 4H, Custom, and Session tables to correctly handle Daylight Saving Time (DST) shifts.") 
+     ], group = GRP_GENERAL, tooltip = "Selects the reference timezone. Used for the Custom and Session tables to correctly handle Daylight Saving Time (DST) shifts.") 
 i_dividerColor = input.color(color.new(color.white, 0), "Divider Color (All Modules)", group = GRP_GENERAL, tooltip = "Selects the color for all enabled dividers.") 
 i_showDividerLabels = input.bool(true, "Show Divider Labels", group = GRP_GENERAL, tooltip = "Adds text labels (e.g., 'Weekly', 'Session Start') to the bottom of all enabled dividers.")
 // FIX: Updated tooltip to describe fading
-i_highlightActiveTimezone = input.bool(true, "Fade Inactive STD/DST Column", group = GRP_GENERAL, tooltip = "If checked, the text of the inactive time column (STD or DST) will be 'faded' (set to gray) in the 4H, Custom, and Session tables.") 
-
-// --- 4-Hour Analysis Settings ---
-var string GRP_H = "4-Hour High/Low of the Week"
-i_enableHourlyLogic = input.bool(false, "Enable 4-Hour Analysis", group = GRP_H, tooltip = "Enables the '4H high and low of the week' analysis. This logic only runs when the chart timeframe is set to 4H.") 
-i_showDivider_H = input.bool(false, "Show Weekly Divider", group = GRP_H, tooltip = "Shows a vertical divider at the start of every week. Only visible when 4-Hour Analysis is enabled.") 
-i_showHourlyTable = input.bool(true, "Show table", inline = "table_h", group = GRP_H, tooltip = "Shows/hides the statistics table for the 4H analysis.") 
-i_tablePos_H = input.string(position.bottom_right, "Table Position", options = [position.top_left, position.top_right, position.middle_left, position.middle_right, position.bottom_left, position.bottom_right], group = GRP_H, tooltip = "Selects the table's position on the chart.") 
-i_tableSize_H = input.string(size.normal, "Table Size", options = [size.tiny, size.small, size.normal, size.large, size.huge], group = GRP_H, tooltip = "Selects the table's font size.") 
-
-i_showHourlyLabels = input.bool(false, "Show labels", group = GRP_H, tooltip = "Shows/hides the labels on the 4H chart for the bar that made the high or low of the week.") 
-i_howHourlyLabelColor = input.color(color.new(color.teal, 70), "HOW Label", group = GRP_H, tooltip = "Selects the color for the '4H High of the Week' label.") 
-i_lowHourlyLabelColor = input.color(color.new(color.red, 70), "LOW Label", group = GRP_H, tooltip = "Selects the color for the '4H Low of the Week' label.") 
+i_highlightActiveTimezone = input.bool(true, "Fade Inactive STD/DST Column", group = GRP_GENERAL, tooltip = "If checked, the text of the inactive time column (STD or DST) will be 'faded' (set to gray) in the Custom and Session tables.") 
 
 // --- Daily Analysis Settings ---
 var string GRP_DAILY = "Daily High/Low of the Week" 
@@ -117,12 +105,10 @@ int MAX_LOOKBACK = 500
 
 // === TIMEFRAME CHECKS ===
 int SECS_IN_DAY = 86400
-int SECS_IN_4H = 14400 
 int chartSecs = timeframe.in_seconds(timeframe.period)
 int chartDurationInMinutes = chartSecs / 60
 
 bool runDailyLogic = i_enableDailyLogic and (timeframe.isdaily and timeframe.multiplier == 1)
-bool runHourlyLogic = i_enableHourlyLogic and (chartSecs == SECS_IN_4H) // 4H logic is special, check by seconds
 bool runWOMLogic = i_enableWOMLogic and (timeframe.isweekly and timeframe.multiplier == 1)
 bool runMOYLogic = i_enableMOYLogic and (timeframe.ismonthly and timeframe.multiplier == 1)
 bool runCustomLogic = i_enableCustomLogic and chartSecs < timeframe.in_seconds(i_customHTF)
@@ -139,25 +125,6 @@ var int   barOfLOW_D = na
 var int[] howHistory_D = array.new_int()
 var int[] lowHistory_D = array.new_int()
 
-// === 4-HOUR (HOW/LOW) VARIABLES === 
-var float weekHigh_H = na 
-var float weekLow_H = na 
-var int   utcHourOfHOW_H = na 
-var int   utcHourOfLOW_H = na 
-var int   localDayOfHOW_H = na 
-var int   localHourOfHOW_H = na 
-var int   localMinuteOfHOW_H = na 
-var int   localDayOfLOW_H = na 
-var int   localHourOfLOW_H = na 
-var int   localMinuteOfLOW_H = na 
-var int   barOfHOW_H = na 
-var int   barOfLOW_H = na 
-var int   offsetOfHOW_H = na 
-var int   offsetOfLOW_H = na 
-var int[] howHistory_H = array.new_int() 
-var int[] lowHistory_H = array.new_int() 
-var int[] offsetHistory_H = array.new_int()
-
 // === MONTHLY (WOM) VARIABLES ===
 var float monthHigh_D = na
 var float monthLow_D = na
@@ -173,8 +140,8 @@ var float yearHigh_D = na
 var float yearLow_D = na
 var int   monthOfYOH_D = na // Month of Year's High
 var int   monthOfYOL_D = na // Month of Year's Low
-var int   barOfYOH_D = na   // Bar of Year's High
-var int   barOfYOL_D = na   // Bar of Year's Low
+var int   barOfYOH_D = na    // Bar of Year's High
+var int   barOfYOL_D = na    // Bar of Year's Low
 var int[] moyhHistory = array.new_int() // Year's High History
 var int[] molyHistory = array.new_int() // Year's Low History
 
@@ -291,11 +258,6 @@ f_monthToString(monthNum) =>
         monthStr := "Dec"
     monthStr
 
-// Formats hour only (e.g., "09:00") for the 4H table
-f_hourToString(barHour) =>
-    int safeHour = (barHour % 24 + 24) % 24
-    str.format("{0,number,00}:00", safeHour)
-
 // Formats hour and minute (e.g., "09:15") for labels and Custom/Session table
 f_timeToString(h, m) =>
     int safeHour = (h % 24 + 24) % 24
@@ -329,13 +291,13 @@ f_calculateOffset(t, tz) =>
     int local_day = dayofmonth(t, tz)
     int utc_hour = hour(t, "Etc/UTC")
     int local_hour = hour(t, tz)
-    
+   
     int day_diff = local_day - utc_day
     if day_diff > 1
         day_diff := -1 
     else if day_diff < -1
         day_diff := 1 
-        
+       
     int hour_diff = local_hour - utc_hour
     int offset = (day_diff * 24) + hour_diff
     offset
@@ -413,18 +375,18 @@ if runWOMLogic
                 label.new(finalizedBarOfMOH, finalizedMonthHigh, "Weekly High of the Month\n" + womMonthStr, yloc = yloc.abovebar, color = i_howLabelColor_WOM, textcolor = color.white, style = label.style_label_down) 
             if not na(finalizedBarOfMOL)
                 label.new(finalizedBarOfMOL, finalizedMonthLow, "Weekly Low of the Month\n" + womMonthStr, yloc = yloc.belowbar, color = i_lowLabelColor_WOM, textcolor = color.white, style = label.style_label_up) 
-        
+       
         if not na(finalizedWeekOfMOH)
             array.push(mohHistory, finalizedWeekOfMOH)
         if not na(finalizedWeekOfMOL)
             array.push(molHistory, finalizedWeekOfMOL)
-            
+           
         // Prune history
         while array.size(mohHistory) > MAX_LOOKBACK
             array.shift(mohHistory)
         while array.size(molHistory) > MAX_LOOKBACK
             array.shift(molHistory)
-            
+           
         // Reset trackers for new month
         monthHigh_D := high
         monthLow_D  := low
@@ -461,18 +423,18 @@ if runMOYLogic
                 label.new(finalizedBarOfYOH, finalizedYearHigh, "Monthly High of the Year\n" + hoyMonthStr, yloc = yloc.abovebar, color = i_howLabelColor_MOY, textcolor = color.white, style = label.style_label_down) 
             if not na(finalizedBarOfYOL)
                 label.new(finalizedBarOfYOL, finalizedYearLow, "Monthly Low of the Year\n" + loyMonthStr, yloc = yloc.belowbar, color = i_lowLabelColor_MOY, textcolor = color.white, style = label.style_label_up) 
-        
+       
         if not na(finalizedMonthOfYOH)
             array.push(moyhHistory, finalizedMonthOfYOH)
         if not na(finalizedMonthOfYOL)
             array.push(molyHistory, finalizedMonthOfYOL)
-            
+           
         // Prune history
         while array.size(moyhHistory) > MAX_LOOKBACK
             array.shift(moyhHistory)
         while array.size(molyHistory) > MAX_LOOKBACK 
             array.shift(molyHistory)
-            
+           
         // Reset trackers for new year
         yearHigh_D := high
         yearLow_D  := low
@@ -490,102 +452,6 @@ if runMOYLogic
             yearLow_D := low
             monthOfYOL_D := month
             barOfYOL_D := bar_index
-
-// --- 4-HOUR LOGIC BLOCK (Table, 4-Hour Labels) --- 
-if runHourlyLogic 
-    int currentUtcHour_H = hour(time, "Etc/UTC")
-    int currentLocalHour_H = hour(time, i_hourlyTimezone)
-    int currentLocalMinute_H = minute(time, i_hourlyTimezone)
-    int currentLocalDay_H = dayofweek(time, i_hourlyTimezone)
-    int currentOffset_H = f_calculateOffset(time, i_hourlyTimezone)
-
-    if isNewWeek 
-        int   finalizedUtcHourOfHOW_H = utcHourOfHOW_H[1] 
-        int   finalizedUtcHourOfLOW_H = utcHourOfLOW_H[1] 
-        int   finalizedLocalDayOfHOW_H = localDayOfHOW_H[1] 
-        int   finalizedLocalHourOfHOW_H = localHourOfHOW_H[1] 
-        int   finalizedLocalMinuteOfHOW_H = localMinuteOfHOW_H[1] 
-        int   finalizedLocalDayOfLOW_H = localDayOfLOW_H[1] 
-        int   finalizedLocalHourOfLOW_H = localHourOfLOW_H[1] 
-        int   finalizedLocalMinuteOfLOW_H = localMinuteOfLOW_H[1] 
-        int   finalizedBarOfHOW_H = barOfHOW_H[1] 
-        int   finalizedBarOfLOW_H = barOfLOW_H[1] 
-        float finalizedWeekHigh_H = weekHigh_H[1] 
-        float finalizedWeekLow_H  = weekLow_H[1] 
-        int   finalizedOffsetOfHOW_H = offsetOfHOW_H[1] 
-        int   finalizedOffsetOfLOW_H = offsetOfLOW_H[1] 
-
-        if i_showHourlyLabels
-            int totalEndMinute_HOW = (finalizedLocalHourOfHOW_H * 60 + finalizedLocalMinuteOfHOW_H) + chartDurationInMinutes 
-            int howEndHour = (totalEndMinute_HOW / 60) 
-            int howEndMinute = totalEndMinute_HOW % 60 
-            
-            int totalEndMinute_LOW = (finalizedLocalHourOfLOW_H * 60 + finalizedLocalMinuteOfLOW_H) + chartDurationInMinutes 
-            int lowEndHour = (totalEndMinute_LOW / 60) 
-            int lowEndMinute = totalEndMinute_LOW % 60 
-
-            string tfStr = "4H"
-
-            string howDayStr = f_dayToString(finalizedLocalDayOfHOW_H) 
-            string howStartTimeStr = f_timeToString(finalizedLocalHourOfHOW_H, finalizedLocalMinuteOfHOW_H) 
-            string howEndTimeStr = f_timeToString(howEndHour, howEndMinute) 
-            string howLabelText = tfStr + " High of the Week\n" + howDayStr + " " + howStartTimeStr + " - " + howEndTimeStr 
-
-            string lowDayStr = f_dayToString(finalizedLocalDayOfLOW_H) 
-            string lowStartTimeStr = f_timeToString(finalizedLocalHourOfLOW_H, finalizedLocalMinuteOfLOW_H) 
-            string lowEndTimeStr = f_timeToString(lowEndHour, lowEndMinute) 
-            string lowLabelText = tfStr + " Low of the Week\n" + lowDayStr + " " + lowStartTimeStr + " - " + lowEndTimeStr 
-            
-            if not na(finalizedBarOfHOW_H) 
-                label.new(finalizedBarOfHOW_H, finalizedWeekHigh_H, howLabelText, yloc = yloc.abovebar, color = i_howHourlyLabelColor, textcolor = color.white, style = label.style_label_down) 
-            if not na(finalizedBarOfLOW_H) 
-                label.new(finalizedBarOfLOW_H, finalizedWeekLow_H, lowLabelText, yloc = yloc.belowbar, color = i_lowHourlyLabelColor, textcolor = color.white, style = label.style_label_up) 
-
-        if not na(finalizedUtcHourOfHOW_H) 
-            array.push(howHistory_H, finalizedUtcHourOfHOW_H) 
-            array.push(offsetHistory_H, finalizedOffsetOfHOW_H) 
-        if not na(finalizedUtcHourOfLOW_H) 
-            array.push(lowHistory_H, finalizedUtcHourOfLOW_H) 
-            array.push(offsetHistory_H, finalizedOffsetOfLOW_H) 
-
-        while array.size(howHistory_H) > MAX_LOOKBACK 
-            array.shift(howHistory_H) 
-        while array.size(lowHistory_H) > MAX_LOOKBACK 
-            array.shift(lowHistory_H) 
-        while array.size(offsetHistory_H) > (MAX_LOOKBACK * 2) 
-            array.shift(offsetHistory_H)
-
-        weekHigh_H := high 
-        weekLow_H  := low 
-        utcHourOfHOW_H := currentUtcHour_H 
-        utcHourOfLOW_H := currentUtcHour_H 
-        localDayOfHOW_H := currentLocalDay_H 
-        localHourOfHOW_H := currentLocalHour_H 
-        localMinuteOfHOW_H := currentLocalMinute_H 
-        localDayOfLOW_H := currentLocalDay_H 
-        localHourOfLOW_H := currentLocalHour_H 
-        localMinuteOfLOW_H := currentLocalMinute_H 
-        barOfHOW_H := bar_index 
-        barOfLOW_H := bar_index 
-        offsetOfHOW_H := currentOffset_H 
-        offsetOfLOW_H := currentOffset_H 
-    else
-        if high > weekHigh_H 
-            weekHigh_H := high 
-            utcHourOfHOW_H := currentUtcHour_H 
-            localDayOfHOW_H := currentLocalDay_H 
-            localHourOfHOW_H := currentLocalHour_H 
-            localMinuteOfHOW_H := currentLocalMinute_H 
-            barOfHOW_H := bar_index 
-            offsetOfHOW_H := currentOffset_H 
-        if low < weekLow_H 
-            weekLow_H  := low 
-            utcHourOfLOW_H := currentUtcHour_H 
-            localDayOfLOW_H := currentLocalDay_H 
-            localHourOfLOW_H := currentLocalHour_H 
-            localMinuteOfLOW_H := currentLocalMinute_H 
-            barOfLOW_H := bar_index 
-            offsetOfLOW_H := currentOffset_H 
 
 // --- CUSTOM LOGIC BLOCK (Table, Custom Labels) ---
 if runCustomLogic
@@ -618,7 +484,7 @@ if runCustomLogic
             int totalEndMinute_HOW = (finalizedLocalHourOfHOW_C * 60 + finalizedLocalMinuteOfHOW_C) + chartDurationInMinutes 
             int howEndHour = (totalEndMinute_HOW / 60) 
             int howEndMinute = totalEndMinute_HOW % 60 
-            
+           
             int totalEndMinute_LOW = (finalizedLocalHourOfLOW_C * 60 + finalizedLocalMinuteOfLOW_C) + chartDurationInMinutes 
             int lowEndHour = (totalEndMinute_LOW / 60) 
             int lowEndMinute = totalEndMinute_LOW % 60 
@@ -635,7 +501,7 @@ if runCustomLogic
             string lowStartTimeStr = f_timeToString(finalizedLocalHourOfLOW_C, finalizedLocalMinuteOfLOW_C) 
             string lowEndTimeStr = f_timeToString(lowEndHour, lowEndMinute) 
             string lowLabelText = ltfStr + " Low of " + htfStr + "\n" + lowDayStr + " " + lowStartTimeStr + " - " + lowEndTimeStr
-            
+           
             if not na(finalizedBarOfHOW_C) 
                 label.new(finalizedBarOfHOW_C, finalizedHTFHigh_C, howLabelText, yloc = yloc.abovebar, color = i_howLabelColor_C, textcolor = color.white, style = label.style_label_down) 
             if not na(finalizedBarOfLOW_C) 
@@ -734,7 +600,7 @@ if runSessionLogic
             int totalEndMinuteH_S = (finalizedLocalHourHigh_S * 60 + finalizedLocalMinHigh_S) + chartDurationInMinutes
             int endHourH_S = (totalEndMinuteH_S / 60)
             int endMinH_S = totalEndMinuteH_S % 60
-            
+           
             int totalEndMinuteL_S = (finalizedLocalHourLow_S * 60 + finalizedLocalMinLow_S) + chartDurationInMinutes
             int endHourL_S = (totalEndMinuteL_S / 60)
             int endMinL_S = totalEndMinuteL_S % 60
@@ -747,7 +613,7 @@ if runSessionLogic
             string startTimeStrL_S = f_timeToString(finalizedLocalHourLow_S, finalizedLocalMinLow_S)
             string endTimeStrL_S = f_timeToString(endHourL_S, endMinL_S)
             string labelTextL_S = tfStr_S + " Session Low\n" + startTimeStrL_S + " - " + endTimeStrL_S
-            
+           
             if not na(finalizedBarHigh_S)
                 label.new(finalizedBarHigh_S, finalizedHigh_S, labelTextH_S, yloc = yloc.abovebar, color = i_highLabelColor_S, textcolor = color.white, style = label.style_label_down)
             if not na(finalizedBarLow_S)
@@ -792,11 +658,6 @@ if runDailyLogic and i_showDivider_D and isNewWeek
     if i_showDividerLabels
         label.new(bar_index, low, "Weekly", yloc = yloc.belowbar, style = label.style_none, textcolor = i_dividerColor, size = size.small)
 
-if runHourlyLogic and i_showDivider_H and isNewWeek
-    line.new(bar_index, high, bar_index, low, extend = extend.both, color = i_dividerColor, style = line.style_dotted)
-    if i_showDividerLabels
-        label.new(bar_index, low, "Weekly", yloc = yloc.belowbar, style = label.style_none, textcolor = i_dividerColor, size = size.small)
-
 if runWOMLogic and i_showDivider_WOM and isNewMonth
     line.new(bar_index, high, bar_index, low, extend = extend.both, color = i_dividerColor, style = line.style_dotted)
     if i_showDividerLabels
@@ -816,7 +677,7 @@ if runCustomLogic and i_showDivider_C and isNewCustomHTF
 if runSessionLogic and i_showDividers_S
     string sTimeStr = f_timeToString(sessionStartHour_S, sessionStartMin_S)
     string eTimeStr = f_timeToString(sessionEndHour_S, sessionEndMin_S)
-    
+   
     if isSessionStart_S
         line.new(bar_index, high, bar_index, low, extend = extend.both, color = i_dividerColor, style = line.style_dotted) 
         if i_showDividerLabels
@@ -849,45 +710,22 @@ f_drawRow_Daily(tbl, row, index, name, howCounts, lowCounts, totalWeeks, maxHowC
     f_fillCell(tbl, 3, row, str.tostring(lowVal), lowColor, color.white, txtSize)
     f_fillCell(tbl, 4, row, str.tostring(lowPct, "0.0") + "%", lowColor, color.white, txtSize)
 
-// 4-Hour table row (Merged Stats, Dual Time Columns)
-// UPDATED: Added 'stdColor' and 'dstColor' parameters
-f_drawRow_4H_Merged(tbl, row,
-     timeStrA, timeStrB,
-     howCounts, lowCounts, 
-     utcHour,
-     totalPeriods, maxHOW, maxLOW, 
-     txtSize, 
-     stdColor, dstColor) => // New params
-    int howVal = array.get(howCounts, utcHour) 
-    int lowVal = array.get(lowCounts, utcHour) 
-    float howPct = (howVal / totalPeriods) * 100 
-    float lowPct = (lowVal / totalPeriods) * 100 
-    color howColor = color.from_gradient(howVal, 0.0, maxHOW, color.new(color.teal, 90), color.new(color.teal, 30)) 
-    color lowColor = color.from_gradient(lowVal, 0.0, maxLOW, color.new(color.red, 90), color.new(color.red, 30)) 
-    
-    f_fillCell(tbl, 0, row, timeStrA, color.new(color.gray, 20), stdColor, txtSize)
-    f_fillCell(tbl, 1, row, timeStrB, color.new(color.gray, 20), dstColor, txtSize)
-    f_fillCell(tbl, 2, row, str.tostring(howVal), howColor, color.white, txtSize) 
-    f_fillCell(tbl, 3, row, str.tostring(howPct, "0.0") + "%", howColor, color.white, txtSize)
-    f_fillCell(tbl, 4, row, str.tostring(lowVal), lowColor, color.white, txtSize) 
-    f_fillCell(tbl, 5, row, str.tostring(lowPct, "0.0") + "%", lowColor, color.white, txtSize)
-
 // Custom table helper function
 // UPDATED: Added 'stdColor' and 'dstColor' parameters
 f_drawRow_Custom_Merged(tbl, row, 
-     timeStrA, timeStrB,
-     howCounts, lowCounts, 
-     utcMinutes, 
-     totalPeriods, maxHOW, maxLOW, 
-     txtSize,
-     stdColor, dstColor) => // New params
+      timeStrA, timeStrB,
+      howCounts, lowCounts, 
+      utcMinutes, 
+      totalPeriods, maxHOW, maxLOW, 
+      txtSize,
+      stdColor, dstColor) => // New params
     int howVal = nz(howCounts.get(utcMinutes), 0) 
     int lowVal = nz(lowCounts.get(utcMinutes), 0) 
     float howPct = (howVal / totalPeriods) * 100 
     float lowPct = (lowVal / totalPeriods) * 100 
     color howColor = color.from_gradient(howVal, 0.0, maxHOW, color.new(color.teal, 90), color.new(color.teal, 30)) 
     color lowColor = color.from_gradient(lowVal, 0.0, maxLOW, color.new(color.red, 90), color.new(color.red, 30)) 
-    
+   
     f_fillCell(tbl, 0, row, timeStrA, color.new(color.gray, 20), stdColor, txtSize)
     f_fillCell(tbl, 1, row, timeStrB, color.new(color.gray, 20), dstColor, txtSize)
     f_fillCell(tbl, 2, row, str.tostring(howVal), howColor, color.white, txtSize) 
@@ -898,19 +736,19 @@ f_drawRow_Custom_Merged(tbl, row,
 // Session table helper function
 // UPDATED: Added 'stdColor' and 'dstColor' parameters
 f_drawRow_Session_Merged(tbl, row, 
-     timeStrA, timeStrB,
-     howCounts, lowCounts, 
-     utcMinutes, 
-     totalPeriods, maxHOW, maxLOW, 
-     txtSize,
-     stdColor, dstColor) => // New params
+      timeStrA, timeStrB,
+      howCounts, lowCounts, 
+      utcMinutes, 
+      totalPeriods, maxHOW, maxLOW, 
+      txtSize,
+      stdColor, dstColor) => // New params
     int howVal = nz(howCounts.get(utcMinutes), 0)
     int lowVal = nz(lowCounts.get(utcMinutes), 0)
     float howPct = (howVal / totalPeriods) * 100 
     float lowPct = (lowVal / totalPeriods) * 100 
     color howColor = color.from_gradient(howVal, 0.0, maxHOW, color.new(color.teal, 90), color.new(color.teal, 30)) 
     color lowColor = color.from_gradient(lowVal, 0.0, maxLOW, color.new(color.red, 90), color.new(color.red, 30)) 
-    
+   
     f_fillCell(tbl, 0, row, timeStrA, color.new(color.gray, 20), stdColor, txtSize)
     f_fillCell(tbl, 1, row, timeStrB, color.new(color.gray, 20), dstColor, txtSize)
     f_fillCell(tbl, 2, row, str.tostring(howVal), howColor, color.white, txtSize) 
@@ -989,87 +827,6 @@ if runDailyLogic and barstate.islast and i_showDailyTable
     table.cell(t_D, 0, row_D, "Total Weeks: " + str.tostring(array.size(howHistory_D)), text_color = color.gray, text_halign = text.align_center, text_size = i_tableSize_D)
     table.merge_cells(t_D, 0, row_D, 4, row_D)
 
-
-// === 4-HOUR MERGED TABLE DRAWING === 
-if runHourlyLogic and barstate.islast and i_showHourlyTable 
-    int[] uniqueOffsets = array.new_int()
-    for offset in offsetHistory_H
-        if array.indexof(uniqueOffsets, offset) == -1
-            array.push(uniqueOffsets, offset)
-            
-    int offset1 = array.size(uniqueOffsets) > 0 ? array.get(uniqueOffsets, 0) : 0
-    int offset2 = array.size(uniqueOffsets) > 1 ? array.get(uniqueOffsets, 1) : offset1 
-    
-    int stdOffset = math.min(offset1, offset2)
-    int dstOffset = math.max(offset1, offset2)
-    
-    string stdStr = "Time (STD)" 
-    string dstStr = "Time (DST)" 
-    if stdOffset == dstOffset 
-        stdStr := "Time (Local)" 
-        dstStr := "Time (Local)" 
-
-    // Determine current active offset
-    int currentOffset_H = f_calculateOffset(timenow, i_hourlyTimezone)
-    bool stdIsActive_H = currentOffset_H == stdOffset
-    bool dstIsActive_H = currentOffset_H == dstOffset
-    
-    // Determine colors
-    color stdColor_H = color.white
-    color dstColor_H = color.white
-    if i_highlightActiveTimezone
-        stdColor_H := stdIsActive_H ? color.white : color.gray
-        dstColor_H := dstIsActive_H ? color.white : color.gray
-
-    int[] howCounts_H = array.new_int(24, 0) 
-    int[] lowCounts_H = array.new_int(24, 0) 
-    for utcHourVal in howHistory_H 
-        if utcHourVal >= 0 and utcHourVal <= 23
-            array.set(howCounts_H, utcHourVal, array.get(howCounts_H, utcHourVal) + 1) 
-    for utcHourVal in lowHistory_H 
-        if utcHourVal >= 0 and utcHourVal <= 23
-            array.set(lowCounts_H, utcHourVal, array.get(lowCounts_H, utcHourVal) + 1) 
-    float totalWeeks_H = math.max(array.size(howHistory_H), 1.0) 
-    float maxHOW_H = math.max(array.max(howCounts_H), 1.0) 
-    float maxLOW_H = math.max(array.max(lowCounts_H), 1.0) 
-    int[] utcHoursToShow_H = array.new_int()
-    for i = 0 to 23
-        if array.get(howCounts_H, i) > 0 or array.get(lowCounts_H, i) > 0 
-            array.push(utcHoursToShow_H, i)
-            
-    int numRows_H = array.size(utcHoursToShow_H) + 3 
-    var table t_H = table.new(i_tablePos_H, 6, numRows_H, border_width = 1) 
-    table.clear(t_H, 0, 0, 5, numRows_H - 1) 
-    int row_H = 0 
-
-    table.cell(t_H, 0, row_H, "4H high and low of the week", text_color = color.white, text_halign = text.align_center, text_size = i_tableSize_H, bgcolor = color.new(color.gray, 20))
-    table.merge_cells(t_H, 0, row_H, 5, row_H) 
-    row_H += 1
-
-    f_drawHeader(t_H, 0, row_H, stdStr, i_tableSize_H, stdColor_H) // Pass color
-    f_drawHeader(t_H, 1, row_H, dstStr, i_tableSize_H, dstColor_H) // Pass color
-    f_drawHeader(t_H, 2, row_H, "4H HIGH #", i_tableSize_H) 
-    f_drawHeader(t_H, 3, row_H, "4H HIGH %", i_tableSize_H)
-    f_drawHeader(t_H, 4, row_H, "4H LOW #", i_tableSize_H)
-    f_drawHeader(t_H, 5, row_H, "4H LOW %", i_tableSize_H)
-    row_H += 1
-
-    for utcHourVal in utcHoursToShow_H
-        string timeStrStd = f_hourToString(utcHourVal + stdOffset)
-        string timeStrDst = f_hourToString(utcHourVal + dstOffset)
-        f_drawRow_4H_Merged(t_H, row_H,
-           timeStrStd, timeStrDst,
-           howCounts_H, lowCounts_H, 
-           utcHourVal,
-           totalWeeks_H, maxHOW_H, maxLOW_H, 
-           i_tableSize_H,
-           stdColor_H, dstColor_H) // Pass colors
-        row_H += 1
-        
-    string footerText = "Total Weeks: " + str.tostring(totalWeeks_H, "0") 
-    table.cell(t_H, 0, row_H, footerText, text_color = color.gray, text_halign = text.align_center, text_size = i_tableSize_H)
-    table.merge_cells(t_H, 0, row_H, 5, row_H) 
-
 // === MONTHLY (WOM) TABLE DRAWING ===
 if runWOMLogic and barstate.islast and i_showWOMTable 
     int[] mohCounts = array.new_int(6, 0)
@@ -1080,11 +837,11 @@ if runWOMLogic and barstate.islast and i_showWOMTable
     for weekVal in molHistory
         if weekVal >= 1 and weekVal <= 5 
             array.set(molCounts, weekVal, array.get(molCounts, weekVal) + 1)
-            
+           
     float totalMonths = math.max(array.size(mohHistory), 1.0)
     float maxMOH = math.max(array.max(mohCounts), 1.0)
     float maxMOL = math.max(array.max(molCounts), 1.0)
-    
+   
     var table t_WOM = table.new(i_tablePos_WOM, 5, 7, border_width = 1) 
     table.clear(t_WOM, 0, 0, 4, 6) 
     int row_WOM = 0
@@ -1106,10 +863,10 @@ if runWOMLogic and barstate.islast and i_showWOMTable
     row_WOM += 1
     f_drawRow_WOM(t_WOM, row_WOM, 5, "Week 5", mohCounts, molCounts, totalMonths, maxMOH, maxMOL, i_tableSize_WOM)
     row_WOM += 1
-    
+   
     table.cell(t_WOM, 0, row_WOM, "Total Months: " + str.tostring(totalMonths, "0"), text_color = color.gray, text_halign = text.align_center, text_size = i_tableSize_WOM)
     table.merge_cells(t_WOM, 0, row_WOM, 4, row_WOM)
-    
+   
 // === YEARLY (MOY) TABLE DRAWING ===
 if runMOYLogic and barstate.islast and i_showMOYTable 
     int[] moyhCounts = array.new_int(13, 0)
@@ -1139,7 +896,7 @@ if runMOYLogic and barstate.islast and i_showMOYTable
     for i = 1 to 12
         f_drawRow_MOY(t_MOY, row_MOY, i, f_monthToString(i), moyhCounts, molyCounts, totalYears, maxYOH, maxYOL, i_tableSize_MOY) 
         row_MOY += 1
-        
+       
     table.cell(t_MOY, 0, row_MOY, "Total Years: " + str.tostring(totalYears, "0"), text_color = color.gray, text_halign = text.align_center, text_size = i_tableSize_MOY)
     table.merge_cells(t_MOY, 0, row_MOY, 4, row_MOY)
 
@@ -1147,7 +904,7 @@ if runMOYLogic and barstate.islast and i_showMOYTable
 if runCustomLogic and barstate.islast and i_showCustomTable
     map<int, int> howCounts_C = map.new<int, int>()
     map<int, int> lowCounts_C = map.new<int, int>()
-    
+   
     for utcMinutesVal in howHistory_C
         howCounts_C.put(utcMinutesVal, nz(howCounts_C.get(utcMinutesVal), 0) + 1) 
     for utcMinutesVal in lowHistory_C
@@ -1157,19 +914,19 @@ if runCustomLogic and barstate.islast and i_showCustomTable
     for offset in offsetHistory_C
         if array.indexof(uniqueOffsets_C, offset) == -1
             array.push(uniqueOffsets_C, offset)
-            
+           
     int offset1_C = array.size(uniqueOffsets_C) > 0 ? array.get(uniqueOffsets_C, 0) : 0
     int offset2_C = array.size(uniqueOffsets_C) > 1 ? array.get(uniqueOffsets_C, 1) : offset1_C 
-    
+   
     int stdOffset_C = math.min(offset1_C, offset2_C)
     int dstOffset_C = math.max(offset1_C, offset2_C)
-    
+   
     string stdStr_C = "Time (STD)" 
     string dstStr_C = "Time (DST)" 
     if stdOffset_C == dstOffset_C 
         stdStr_C := "Time (Local)" 
         dstStr_C := "Time (Local)" 
-        
+       
     // Determine current active offset
     int currentOffset_C = f_calculateOffset(timenow, i_hourlyTimezone)
     bool stdIsActive_C = currentOffset_C == stdOffset_C
@@ -1185,7 +942,7 @@ if runCustomLogic and barstate.islast and i_showCustomTable
     float totalPeriods_C = math.max(array.size(howHistory_C), 1.0) 
     float maxHOW_C = math.max(array.size(howCounts_C.values()) > 0 ? array.max(howCounts_C.values()) : 0, 1.0)
     float maxLOW_C = math.max(array.size(lowCounts_C.values()) > 0 ? array.max(lowCounts_C.values()) : 0, 1.0)
-    
+   
     int[] utcMinutesToShow_C = array.new<int>()
     int[] howKeys = howCounts_C.keys()
     int[] lowKeys = lowCounts_C.keys()
@@ -1195,9 +952,9 @@ if runCustomLogic and barstate.islast and i_showCustomTable
         if array.indexof(utcMinutesToShow_C, key) == -1
             array.push(utcMinutesToShow_C, key)
     array.sort(utcMinutesToShow_C) // Sort the minutes chronologically
-    
+   
     int[] sortedUtcMinutesToShow_C = array.new<int>()
-    
+   
     if i_limitCustomRows
         map<int, int> totalCounts_C = map.new<int, int>()
         for key in howCounts_C.keys()
@@ -1208,17 +965,17 @@ if runCustomLogic and barstate.islast and i_showCustomTable
         int[] totalCountsArray_C = array.new<int>()
         for utcMinute in utcMinutesToShow_C
             array.push(totalCountsArray_C, totalCounts_C.get(utcMinute))
-            
+           
         int[] sortedIndices = array.sort_indices(totalCountsArray_C, order.descending)
-        
+       
         for index in sortedIndices
             array.push(sortedUtcMinutesToShow_C, array.get(utcMinutesToShow_C, index))
-            
+           
         if array.size(sortedUtcMinutesToShow_C) > i_maxCustomRows
             sortedUtcMinutesToShow_C := array.slice(sortedUtcMinutesToShow_C, 0, i_maxCustomRows) 
     else
         sortedUtcMinutesToShow_C := utcMinutesToShow_C
-            
+           
     int numRows_C = array.size(sortedUtcMinutesToShow_C) + 3 
     var table t_C = table.new(i_tablePos_C, 6, numRows_C, border_width = 1) 
     table.clear(t_C, 0, 0, 5, numRows_C - 1) 
@@ -1242,7 +999,7 @@ if runCustomLogic and barstate.islast and i_showCustomTable
         int utcMinute = utcMinutesVal % 60
         string timeStrStd = f_timeToString(utcHour + stdOffset_C, utcMinute) 
         string timeStrDst = f_timeToString(utcHour + dstOffset_C, utcMinute) 
-        
+       
         f_drawRow_Custom_Merged(t_C, row_C,
            timeStrStd, timeStrDst, 
            howCounts_C, lowCounts_C, 
@@ -1251,17 +1008,17 @@ if runCustomLogic and barstate.islast and i_showCustomTable
            i_tableSize_C,
            stdColor_C, dstColor_C) // Pass colors
         row_C += 1
-        
+       
     string footerText = "Total " + i_customHTF + " Periods: " + str.tostring(totalPeriods_C, "0") 
     table.cell(t_C, 0, row_C, footerText, text_color = color.gray, text_halign = text.align_center, text_size = i_tableSize_C)
     table.merge_cells(t_C, 0, row_C, 5, row_C)
-    
+   
 // === SESSION MERGED TABLE DRAWING (NEW) ===
 if runSessionLogic and i_showTable_S and barstate.islast
     // Use Maps to store counts, keyed by UTC minute (0-1439)
     map<int, int> howCounts_S_tbl = map.new<int, int>()
     map<int, int> lowCounts_S_tbl = map.new<int, int>()
-    
+   
     // Populate maps from history
     for utcMinutesVal in howHistory_S
         howCounts_S_tbl.put(utcMinutesVal, nz(howCounts_S_tbl.get(utcMinutesVal), 0) + 1) 
@@ -1273,13 +1030,13 @@ if runSessionLogic and i_showTable_S and barstate.islast
     for offset in offsetHistory_S
         if array.indexof(uniqueOffsets_S, offset) == -1
             array.push(uniqueOffsets_S, offset)
-            
+           
     int offset1_S = array.size(uniqueOffsets_S) > 0 ? array.get(uniqueOffsets_S, 0) : 0
     int offset2_S = array.size(uniqueOffsets_S) > 1 ? array.get(uniqueOffsets_S, 1) : offset1_S 
-    
+   
     int stdOffset_S = math.min(offset1_S, offset2_S)
     int dstOffset_S = math.max(offset1_S, offset2_S)
-    
+   
     string stdStr_S = "Time (STD)"
     string dstStr_S = "Time (DST)"
     if stdOffset_S == dstOffset_S 
@@ -1302,7 +1059,7 @@ if runSessionLogic and i_showTable_S and barstate.islast
     float totalSessions_S = math.max(array.size(howHistory_S), 1.0) 
     float maxHOW_S = math.max(array.size(howCounts_S_tbl.values()) > 0 ? array.max(howCounts_S_tbl.values()) : 0, 1.0)
     float maxLOW_S = math.max(array.size(lowCounts_S_tbl.values()) > 0 ? array.max(lowCounts_S_tbl.values()) : 0, 1.0)
-    
+   
     // Get all unique candle times that made a high or low
     int[] utcMinutesToShow_S = array.new<int>()
     for key in howCounts_S_tbl.keys()
@@ -1310,10 +1067,10 @@ if runSessionLogic and i_showTable_S and barstate.islast
     for key in lowCounts_S_tbl.keys()
         if array.indexof(utcMinutesToShow_S, key) == -1
             array.push(utcMinutesToShow_S, key)
-    
+   
     // Sort the list of times
     int[] sortedUtcMinutesToShow_S = array.new<int>()
-    
+   
     if i_limitRows_S
         // Sort by frequency
         map<int, int> totalCounts_S = map.new<int, int>()
@@ -1325,19 +1082,19 @@ if runSessionLogic and i_showTable_S and barstate.islast
         int[] totalCountsArray_S = array.new<int>()
         for utcMinute in utcMinutesToShow_S
             array.push(totalCountsArray_S, totalCounts_S.get(utcMinute))
-            
+           
         int[] sortedIndices = array.sort_indices(totalCountsArray_S, order.descending)
-        
+       
         for index in sortedIndices
             array.push(sortedUtcMinutesToShow_S, array.get(utcMinutesToShow_S, index))
-            
+           
         if array.size(sortedUtcMinutesToShow_S) > i_maxRows_S
             sortedUtcMinutesToShow_S := array.slice(sortedUtcMinutesToShow_S, 0, i_maxRows_S)
     else
         // Sort chronologically
         array.sort(utcMinutesToShow_S)
         sortedUtcMinutesToShow_S := utcMinutesToShow_S
-            
+           
     // --- Draw the Table ---
     int numRows_S = array.size(sortedUtcMinutesToShow_S) + 3 // +3 for Title, Header, Footer
     var table t_S = table.new(i_tablePos_S, 6, numRows_S, border_width = 1) 
@@ -1363,7 +1120,7 @@ if runSessionLogic and i_showTable_S and barstate.islast
         // Show the candle's START time in both STD and DST
         string timeStrStd = f_timeToString(utcHour + stdOffset_S, utcMinute) 
         string timeStrDst = f_timeToString(utcHour + dstOffset_S, utcMinute) 
-        
+       
         f_drawRow_Session_Merged(t_S, row_S,
              timeStrStd, timeStrDst, 
              howCounts_S_tbl, lowCounts_S_tbl, 
@@ -1372,7 +1129,7 @@ if runSessionLogic and i_showTable_S and barstate.islast
              i_tableSize_S,
              stdColor_S, dstColor_S) // Pass colors
         row_S += 1
-        
+       
     string footerText_S = "Total Sessions: " + str.tostring(totalSessions_S, "0") 
     table.cell(t_S, 0, row_S, footerText_S, text_color = color.gray, text_halign = text.align_center, text_size = i_tableSize_S)
     table.merge_cells(t_S, 0, row_S, 5, row_S)
